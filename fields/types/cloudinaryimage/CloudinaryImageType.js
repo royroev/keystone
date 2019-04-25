@@ -44,6 +44,9 @@ function cloudinaryimage (list, path, options) {
 	this._underscoreMethods = ['format'];
 	this._fixedSize = 'full';
 	this._properties = ['select', 'selectPrefix', 'autoCleanup'];
+	if (options.storage) {
+		this.storage = options.storage;
+	}
 
 	if (options.filenameAsPublicID) {
 		// Produces the same result as the legacy filenameAsPublicID option
@@ -242,9 +245,12 @@ cloudinaryimage.prototype.addToSchema = function (schema) {
 		 */
 		upload: function (file, options) {
 			var promise = new Promise(function (resolve) {
-				cloudinary.uploader.upload(file, function (result) {
+				this.storage.uploadFile(file, function (err, result) {
 					resolve(result);
-				}, options);
+				});
+				// cloudinary.uploader.upload(file, function (result) {
+				// 	resolve(result);
+				// }, options);
 			});
 			return promise;
 		},
@@ -378,7 +384,6 @@ cloudinaryimage.prototype.updateItem = function (item, data, files, callback) {
 		files = {};
 	}
 
-	var cloudinary = require('cloudinary');
 	var field = this;
 
 	// Prepare values
@@ -387,7 +392,7 @@ cloudinaryimage.prototype.updateItem = function (item, data, files, callback) {
 
 	// Providing the string "remove" or "delete" removes the file and resets the field
 	if (value === 'remove' || value === 'delete') {
-		cloudinary.uploader.destroy(item.get(field.paths.public_id), function (result) {
+		this.storage.removeFile(item.get(field.paths.public_id), function (result) {
 			if (result.error) {
 				callback(result.error);
 			} else {
@@ -440,9 +445,9 @@ cloudinaryimage.prototype.updateItem = function (item, data, files, callback) {
 				filename = sanitize(filename);
 				uploadOptions.public_id = trimSupportedFileExtensions(filename);
 			}
-			cloudinary.uploader.upload(uploadedFile.path, function (result) {
-				if (result.error) {
-					return callback(result.error);
+			this.storage.uploadFile(uploadedFile.path, function (err, result) {
+				if (err) {
+					return callback(err);
 				} else {
 					item.set(field.path, result);
 					return callback();
